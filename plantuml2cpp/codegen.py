@@ -43,11 +43,12 @@ class CodeGenerator:
             class {class_name} : public T {{
               public:
                 enum class State : unsigned char {{
+                    NONE_,
                     {''.join(f'{x}, ' for x in self.diagram.state_names)}
-                    NO_STATE_,
                 }};
 
                 enum class Event : unsigned char {{
+                    NONE_,
                     {''.join(f'{x}, ' for x in self.diagram.event_names)}
                 }};
 
@@ -72,45 +73,52 @@ class CodeGenerator:
 
                 State state_;
 
+                static State get_common_state(State state_a, State state_b);
                 static State get_parent_state(State state);
-                static const Transition* transitions();
-                void call_state_entry_actions(State state);
-                void call_state_exit_actions(State state);
+                static const Transition& get_transition(int transition_idx);
+                void call_entry_actions(State state);
+                void call_exit_actions(State state);
                 void call_entry_actions_recursively(State cur_state, State new_state);
                 void call_exit_actions_recursively(State cur_state, State new_state);
                 void call_transition_actions(int transition_idx);
-                const Transition* find_transition_from_cur_state(Event event) const;
+                int find_transition_from_cur_state(Event event) const;
                 bool check_transition_guard(int transition_idx) const;
             }};  // class {class_name}
 
             template <typename T>
             void {class_name}<T>::init() {{
-                call_entry_actions_recursively(State::NO_STATE_, State::{self.diagram.initial_state.name});
+                call_entry_actions_recursively(State::NONE_, State::{self.diagram.initial_state.name});
                 state_ = State::{self.diagram.initial_state.name};
             }}
 
             template <typename T>
             void {class_name}<T>::post_event(Event event) {{
                 // Get transition from the current state
-                const Transition* transition = find_transition_from_cur_state(event);
-                if (transition == nullptr) {{
+                int transition_idx = find_transition_from_cur_state(event);
+                if (transition_idx == -1) {{
                     return;
                 }}
 
+                const Transition& transition = get_transition(transition_idx);
+
                 // Find the closest common ancestor between source and target state
-                State common_ancestor = get_common_ancestor(transition->from_state, transition->to_state);
+                State common_state = get_common_state(transition.from_state, transition.to_state);
 
-                // Call state exit, transition and state entry actions
-                call_exit_actions_recursively(state_, common_ancestor);
-                call_transition_actions(*transition);
-                call_entry_actions_recursively(common_ancestor, transition->to_state);
-
-                // Update the state
-                state_ = transition->to_state;
+                // Call state exit, transition and state entry actions and update the state
+                if (state_ == transition.to_state) {{
+                    call_exit_actions(state_);
+                    call_transition_actions(transition_idx);
+                    call_entry_actions(state_);
+                }} else {{
+                    call_exit_actions_recursively(state_, common_state);
+                    call_transition_actions(transition_idx);
+                    call_entry_actions_recursively(common_state, transition.to_state);
+                    state_ = transition.to_state;
+                }}
             }}
 
             template <typename T>
-            {class_name}<T>::State {class_name}<T>::current_state() const {{
+            typename {class_name}<T>::State {class_name}<T>::current_state() const {{
                 return state_;
             }}
 
@@ -120,7 +128,7 @@ class CodeGenerator:
                     {''.join(f'"{x}", ' for x in self.diagram.state_names)}
                 }};
                 
-                int idx = static_cast<int>(state);
+                int idx = static_cast<int>(state) - 1;
                 const char* s = idx < sizeof(lut) / sizeof(lut[0]) ? lut[idx] : "INVALID";
                 return s;
             }}
@@ -131,51 +139,78 @@ class CodeGenerator:
                     {''.join(f'"{x}", ' for x in self.diagram.event_names)}
                 }};
                 
-                int idx = static_cast<int>(event);
+                int idx = static_cast<int>(event) - 1;
                 const char* s = idx < sizeof(lut) / sizeof(lut[0]) ? lut[idx] : "INVALID";
                 return s;
             }}
 
             template <typename T>
-            {class_name}<T>::State {class_name}<T>::get_parent_state(State state) {{
+            typename {class_name}<T>::State {class_name}<T>::get_common_state(State state_a, State state_b) {{
+                State sequence[{self._state_nesting_depth}];
+                int idx = 0;
+
+                for (State st = state_a; st != State::NONE_; st = get_parent_state(st)) {{
+                    sequence[idx] = st;
+                    ++idx;
+                }}
+
+                for (State st = state_b; st != State::NONE_; st = get_parent_state(st)) {{
+                    for (int i = 0; i < idx; ++i) {{
+                        if (sequence[i] == st) {{
+                            return st;
+                        }}
+                    }}
+                }}
+
+                return State::NONE_;
+            }}
+
+            template <typename T>
+            typename {class_name}<T>::State {class_name}<T>::get_parent_state(State state) {{
                 static const State lut[] = {{
                     {nl.join(f'{self._make_parent_state_enum_member(x)},  // Parent of {x}' for x in self.diagram.state_names)}
                 }};
                 
-                return lut[static_cast<int>(state)];
+                return lut[static_cast<int>(state) - 1];
             }}
 
             template <typename T>
-            const {class_name}<T>::Transition* {class_name}<T>::transitions() {{
+            const typename {class_name}<T>::Transition& {class_name}<T>::get_transition(int transition_idx) {{
                 static const Transition transitions[] = {{
                     {nl.join(self._make_transition_initializer(x) for x in self.diagram.transitions)}
                 }};
 
-                return transitions;
+                return transitions[transition_idx];
             }}
 
             template <typename T>
-            void {class_name}<T>::call_state_entry_actions(State state) {{
+            void {class_name}<T>::call_entry_actions(State state) {{
                 switch (state) {{
                     {nlnl.join(f'case State::{x}: {{ {self._make_state_entry_code(x)} }} break;'
                      for x in self.diagram.state_names if self.diagram.states[x].entry_transitions)}
+
+                    default:
+                      break;
                 }}  // switch (state)
-            }}  // run_state_entry_actions()
+            }}  // call_entry_actions()
 
             template <typename T>
-            void {class_name}<T>::call_state_exit_actions(State state) {{
+            void {class_name}<T>::call_exit_actions(State state) {{
                 switch (state) {{
                     {nlnl.join(f'case State::{x}: {{ {self._make_state_exit_code(x)} }} break;'
                      for x in self.diagram.state_names if self.diagram.states[x].exit_transitions)}
+
+                    default:
+                      break;
                 }}  // switch (state)
-            }}  // run_state_exit_actions()
+            }}  // call_exit_actions()
 
             template <typename T>
             void {class_name}<T>::call_entry_actions_recursively(State cur_state, State new_state) {{
                 // Collect the (reverse) order in which we have to go through the states
                 State sequence[{self._state_nesting_depth}];
                 int idx = 0;
-                for (State st = new_state; st != cur_state; st = get_parent_state(state)) {{
+                for (State st = new_state; st != cur_state; st = get_parent_state(st)) {{
                     sequence[idx] = st;
                     ++idx;
                 }}
@@ -189,7 +224,7 @@ class CodeGenerator:
 
             template <typename T>
             void {class_name}<T>::call_exit_actions_recursively(State cur_state, State new_state) {{
-                for (State st = cur_state; st != new_state; st = get_parent_state(state)) {{
+                for (State st = cur_state; st != new_state; st = get_parent_state(st)) {{
                     call_exit_actions(st);
                 }}
             }}
@@ -203,12 +238,12 @@ class CodeGenerator:
             }}  // call_transition_actions()
 
             template <typename T>
-            const {class_name}<T>::Transition* {class_name}<T>::find_transition_from_cur_state(Event event) const {{
-                auto state = _state;
-                while (state != State::NO_STATE_) {{
+            int {class_name}<T>::find_transition_from_cur_state(Event event) const {{
+                auto state = state_;
+                while (state != State::NONE_) {{
                     // Go through the whole transition table to find a matching transition
                     for (int i = 0; i < kNumTransitions; ++i) {{
-                        auto& transition = transitions()[i];
+                        const Transition& transition = get_transition(i);
 
                         // Ignore the transition if the "from" state or the event don't match
                         if (transition.event != event || transition.from_state != state) {{
@@ -217,7 +252,7 @@ class CodeGenerator:
                         
                         // If the guard condition is met, we have a winner!
                         if (check_transition_guard(i)) {{
-                            return &transition;
+                            return i;
                         }}
                     }}
 
@@ -226,7 +261,7 @@ class CodeGenerator:
                 }}
 
                 // We didn't find any matching transition or the guard condition failed
-                return nullptr;
+                return -1;
             }}
 
             template <typename T>
@@ -268,7 +303,7 @@ class CodeGenerator:
     def _make_parent_state_enum_member(self, state_name: str) -> str:
         """Returns the name of the State enum member of the given state's parent"""
         parent = self.diagram.states[state_name].parent_state
-        name = parent.name if parent else 'NO_STATE_'
+        name = parent.name if parent else 'NONE_'
         return f'State::{name}'
 
     def _make_transition_initializer(self, transition: Transition) -> str:
@@ -279,8 +314,8 @@ class CodeGenerator:
         max_from_state_len = max(len(x.from_state.name) for x in self.diagram.transitions)
         from_state_code = f'State::{transition.from_state.name + ",":{max_from_state_len + 1}}'
 
-        max_to_state_len = max(len(x.to_state.name) for x in self.diagram.transitions)
-        to_state_code = f'State::{transition.to_state.name:{max_to_state_len}}'
+        max_to_state_len = max(len(x.to_state.entry_target_state.name) for x in self.diagram.transitions)
+        to_state_code = f'State::{transition.to_state.entry_target_state.name:{max_to_state_len}}'
 
         code = f'/* clang-format off */ {{{event_code} {from_state_code} {to_state_code}}}  /* clang-format on */,'
 

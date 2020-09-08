@@ -1,0 +1,16 @@
+' This is
+' the multiline
+' copyright header
+
+@startuml
+title Simple FSM
+
+[*] -> Idle
+
+Idle : entry / printf("Entered Idle\\n")
+Idle : exit / printf("Left Idle\\n")
+Idle -> Working : JobReceived\n/ printf("Job received\\n")
+
+Working : entry / printf("Entered Working\\n")
+Working : exit / printf("Left Working\\n")
+Working -> Idle : JobDone\n/ printf("Job done\\n")

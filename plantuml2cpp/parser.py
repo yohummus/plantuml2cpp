@@ -5,7 +5,7 @@ Module for parsing PlantUML state diagram files
 import pathlib
 import itertools
 import re
-from typing import NamedTuple, List, Optional, Tuple, Dict
+from typing import NamedTuple, List, Optional, Tuple, Dict, Union
 
 
 class Line(NamedTuple):
@@ -42,7 +42,7 @@ class Transition(NamedTuple):
     event: str
     guard: Optional[Guard]
     from_state: 'State'
-    to_state: 'State'
+    to_state: 'State'        # Target state as written in the .puml file
     actions: List[Action]
 
     def __str__(self):
@@ -63,6 +63,20 @@ class State(NamedTuple):
     int_transitions: List[Transition]
     entry_transitions: List[Transition]
     exit_transitions: List[Transition]
+
+    @property
+    def initial_child_state(self) -> Union['State', None]:
+        """Returns the child state that is the initial state when entering this state"""
+        states = [x for x in self.child_states if x.is_initial_state]
+        return states[0] if states else None
+
+    @property
+    def entry_target_state(self) -> 'State':
+        """Returns the state in the hierarchy of this state that is the final target when entering this state"""
+        if not self.initial_child_state:
+            return self
+        else:
+            return self.initial_child_state.entry_target_state
 
     def __str__(self):
         parent = 'None' if not self.parent_state else self.parent_state.name
@@ -141,7 +155,7 @@ class PlantUmlStateDiagram:
         """Returns the initial state"""
         state = [x for x in self.states.values() if x.is_initial_state and x.parent_state is None][0]
         while state.child_states:
-            state = [x for x in state.child_states.values() if x.is_initial_state][0]
+            state = [x for x in state.child_states if x.is_initial_state][0]
 
         return state
 
@@ -271,12 +285,17 @@ class PlantUmlStateDiagram:
 
     def _parse_transition_line(self, line: Line, trans_txt: str, from_state: State, to_state: State) -> Transition:
         """Creates a transition from the text on a transition or inside a state"""
-        m = re.fullmatch(r'^(\w+)\s*(\[\s*(.*?)\s*\]\s*)?(/(.*))?', trans_txt.replace('\\n', ''))
-        assert m, f'Invalid transition format in {line}: {line.orig_text}'
 
+        # Replace \\ with \ and \n with a space
+        trans_txt = '\\'.join([x.replace('\\n', ' ') for x in trans_txt.split('\\\\')])
+
+        # Extract the individual parts from the line
+        m = re.fullmatch(r'^(\w+)\s*(\[\s*(.*?)\s*\]\s*)?(/(.*))?', trans_txt)
+        assert m, f'Invalid transition format in {line}: {line.orig_text}'
         event_name, _, guard_code, _, actions_txt = m.groups()
         actions_code = [] if not actions_txt else [x.strip() for x in actions_txt.split('/') if x.strip()]
 
+        # Create the transition
         event = Event(event_name)
         guard = None if not guard_code else Guard(guard_code)
         actions = [Action(x) for x in actions_code]

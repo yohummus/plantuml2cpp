@@ -47,21 +47,24 @@ def parse_command_line() -> CommandLineArgs:
                         help='PlantUML state machine description file')
 
     parser.add_argument('output_file', type=pathlib.Path, nargs='?',
-                        help='Output file (C++ header); default is the name of the input file with the .h extension')
+                        help='output file (C++ header) or directory; default is the name of the input file with the'
+                             ' .h extension')
 
     parser.add_argument('--namespace', '-n', type=str, default='',
-                        help='Namespace for the generated code; default is no namespace')
+                        help='namespace for the generated code; default is no namespace')
 
     parser.add_argument('--classname', '-c', type=str,
-                        help='Name of the generated class; default is the stem of the input filename in Pascal case')
+                        help='name of the generated class; default is the stem of the input filename in Pascal case')
 
     parser.add_argument('--noformat', '-f', action='store_true', default=False,
-                        help='Do not run clang-format to format the generated code')
+                        help='do not run clang-format to format the generated code')
 
     args = parser.parse_args()
 
     if args.output_file is None:
         args.output_file = args.puml_file.with_suffix('.h')
+    elif args.output_file.is_dir():
+        args.output_file /= args.puml_file.with_suffix('.h').name
 
     if args.classname is None:
         args.classname = to_pascal_case(args.puml_file.stem)
