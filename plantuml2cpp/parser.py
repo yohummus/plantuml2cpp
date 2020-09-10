@@ -42,7 +42,7 @@ class Transition(NamedTuple):
     event: str
     guard: Optional[Guard]
     from_state: 'State'
-    to_state: 'State'        # Target state as written in the .puml file
+    to_state: 'State'  # Target state as written in the .puml file
     actions: List[Action]
 
     def __str__(self):
@@ -59,7 +59,7 @@ class State(NamedTuple):
     parent_state: Optional['State']
     child_states: 'StateDict'
     is_initial_state: bool
-    out_transitions: List[Transition]
+    ext_transitions: List[Transition]
     int_transitions: List[Transition]
     entry_transitions: List[Transition]
     exit_transitions: List[Transition]
@@ -80,7 +80,7 @@ class State(NamedTuple):
 
     def __str__(self):
         parent = 'None' if not self.parent_state else self.parent_state.name
-        transition_nums = ', '.join([f'{len(self.out_transitions)} out',
+        transition_nums = ', '.join([f'{len(self.ext_transitions)} ext',
                                      f'{len(self.int_transitions)} int',
                                      f'{len(self.entry_transitions)} entry',
                                      f'{len(self.exit_transitions)} exit'])
@@ -131,7 +131,7 @@ class PlantUmlStateDiagram:
         transitions = []
         for state in self.states.values():
             transitions += state.int_transitions
-            transitions += state.out_transitions
+            transitions += state.ext_transitions
 
         return sorted({trans.event.name for trans in transitions})
 
@@ -146,8 +146,20 @@ class PlantUmlStateDiagram:
         transitions = []
         for state in self.states.values():
             transitions += state.int_transitions
-            transitions += state.out_transitions
+            transitions += state.ext_transitions
 
+        return sorted(transitions, key=lambda x: (x.event.name, x.from_state.name))
+
+    @property
+    def ext_transitions(self) -> List[Transition]:
+        """Returns a list containing all external transitions, sorted alphabetically by the event and the source state"""
+        transitions = [y for x in self.states.values() for y in x.ext_transitions]
+        return sorted(transitions, key=lambda x: (x.event.name, x.from_state.name))
+
+    @property
+    def int_transitions(self) -> List[Transition]:
+        """Returns a list containing all internal transitions, sorted alphabetically by the event and the source state"""
+        transitions = [y for x in self.states.values() for y in x.int_transitions]
         return sorted(transitions, key=lambda x: (x.event.name, x.from_state.name))
 
     @property
@@ -279,7 +291,7 @@ class PlantUmlStateDiagram:
             assert to_state in states, f'State "{to_state}" in {line} has not been defined'
 
             transition = self._parse_transition_line(line, trans_txt, states[from_state], states[to_state])
-            states[from_state].out_transitions.append(transition)
+            states[from_state].ext_transitions.append(transition)
 
         return remaining_lines
 

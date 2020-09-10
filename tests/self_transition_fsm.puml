@@ -1,0 +1,13 @@
+' This is
+' the multiline
+' copyright header
+
+@startuml
+title Self Transition FSM
+
+[*] -> Idle
+
+Idle : entry / printf("Entered Idle\\n")
+Idle : exit / printf("Left Idle\\n")
+
+Idle -> Idle : Timeout / printf("Trans Timeout\\n")
