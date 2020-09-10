@@ -101,6 +101,12 @@ class CodeGenerator:
 
                 const Transition& transition = get_transition(transition_idx);
 
+                // If it is an internal transition, don't change state
+                if (transition.to_state == State::NONE_) {{
+                    call_transition_actions(transition_idx);
+                    return;
+                }}
+
                 // Find the closest common ancestor between source and target state
                 State common_state = get_common_state(transition.from_state, transition.to_state);
 
@@ -314,9 +320,10 @@ class CodeGenerator:
         max_from_state_len = max(len(x.from_state.name) for x in self.diagram.transitions)
         from_state_code = f'State::{transition.from_state.name + ",":{max_from_state_len + 1}}'
 
-        max_to_state_len = max(len(x.to_state.entry_target_state.name) for x in self.diagram.transitions)
-        to_state_code = f'State::{transition.to_state.entry_target_state.name:{max_to_state_len}}'
-
+        max_to_state_len = max([len(x.to_state.entry_target_state.name)
+                                for x in self.diagram.ext_transitions] + [len('NONE_')])
+        to_state_name = 'NONE_' if transition in transition.from_state.int_transitions else transition.to_state.entry_target_state.name
+        to_state_code = f'State::{to_state_name:{max_to_state_len}}'
         code = f'/* clang-format off */ {{{event_code} {from_state_code} {to_state_code}}}  /* clang-format on */,'
 
         return code

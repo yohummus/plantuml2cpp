@@ -84,5 +84,3 @@ def to_pascal_case(string: str) -> str:
 
 if __name__ == '__main__':
     main()
-
-# TODO: Fix internal transitions. They should be modeled like the entry/exit transitions and not as arrows

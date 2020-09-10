@@ -54,15 +54,47 @@ class TestMain(unittest.TestCase):
         output = self.run_main_compile_and_run_executable('simple_fsm.puml')
         self.assertEqual(output, textwrap.dedent('''
             Entered Idle
+            --- Posting JobReceived...
             Left Idle
             Job received
             Entered Working
+            --- Posting JobDone...
             Left Working
             Job done
             Entered Idle
         ''').lstrip())
 
-    def test_deep_hierarchy_fsm(self):
+        with open(self.out_dir / 'simple_fsm.h') as f:
+            content = f.read()
+
+        self.assertIn('This is', content)
+        self.assertIn('the multiline', content)
+        self.assertIn('copyright header', content)
+
+    def test_internal_transitions(self):
+        """Verifies that internal transitions do not lead to a change of state"""
+        output = self.run_main_compile_and_run_executable('internal_transitions_fsm.puml')
+        self.assertEqual(output, textwrap.dedent('''
+            Entered Working
+            Entered Drilling
+            --- Posting GotHungry...
+            Trans GotHungry
+            --- Posting HitSomething...
+            Trans HitSomething
+        ''').lstrip())
+
+    def test_self_transition(self):
+        """Verifies that transitions back to the same state trigger the state exit and entry events"""
+        output = self.run_main_compile_and_run_executable('self_transition_fsm.puml')
+        self.assertEqual(output, textwrap.dedent('''
+            Entered Idle
+            --- Posting Timeout...
+            Left Idle
+            Trans Timeout
+            Entered Idle
+        ''').lstrip())
+
+    def test_deep_hierarchy(self):
         """Verifies that entry/exit actions and transitions are executed properly for an FSM with nested states"""
         output = self.run_main_compile_and_run_executable('deep_hierarchy_fsm.puml')
         self.assertEqual(output, textwrap.dedent('''
@@ -105,7 +137,7 @@ class TestMain(unittest.TestCase):
             Left DeepSleep
             Trans HeardSomething
             Entered Napping
-        ''').lstrip())  # TODO: There is a problem somewhere here
+        ''').lstrip())
 
 
 if __name__ == '__main__':

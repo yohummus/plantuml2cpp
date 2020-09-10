@@ -8,7 +8,9 @@ int main(int argc, char *argv[])
     SimpleFsm<> fsm;
 
     fsm.init();
+    printf("--- Posting JobReceived...\n");
     fsm.post_event(Event::JobReceived);
+    printf("--- Posting JobDone...\n");
     fsm.post_event(Event::JobDone);
 
     return 0;
