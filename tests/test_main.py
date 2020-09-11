@@ -49,6 +49,17 @@ class TestMain(unittest.TestCase):
         self.compile(pathlib.Path(puml_file).with_suffix('.cc'))
         return self.run_compiled_executable(pathlib.Path(puml_file).with_suffix(''))
 
+    def test_copyright_header(self):
+        """Verifies that the generated code includes the copyright header from the .puml file"""
+        self.run_main(self.tests_dir / 'simple_fsm.puml', self.out_dir)
+
+        with open(self.out_dir / 'simple_fsm.h') as f:
+            content = f.read()
+
+        self.assertIn('This is', content)
+        self.assertIn('the multiline', content)
+        self.assertIn('copyright header', content)
+
     def test_simple_fsm(self):
         """Verifies that working code can be generated for a simple FSM"""
         output = self.run_main_compile_and_run_executable('simple_fsm.puml')
@@ -63,13 +74,6 @@ class TestMain(unittest.TestCase):
             Job done
             Entered Idle
         ''').lstrip())
-
-        with open(self.out_dir / 'simple_fsm.h') as f:
-            content = f.read()
-
-        self.assertIn('This is', content)
-        self.assertIn('the multiline', content)
-        self.assertIn('copyright header', content)
 
     def test_internal_transitions(self):
         """Verifies that internal transitions do not lead to a change of state"""
