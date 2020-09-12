@@ -74,6 +74,7 @@ class TestMain(unittest.TestCase):
             Job done
             Entered Idle
         ''').lstrip())
+        self.assertFalse(True)
 
     def test_internal_transitions(self):
         """Verifies that internal transitions do not lead to a change of state"""
