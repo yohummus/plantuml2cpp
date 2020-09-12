@@ -37,3 +37,7 @@ jobs:
     - name: Test with pytest
       run: |
         pytest
+    - name: Test if package can be installed and used
+      run: |
+        python setup.py install
+        plantuml2cpp --help
