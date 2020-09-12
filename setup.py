@@ -11,7 +11,7 @@ with open('README.md', 'r') as f:
 
 setuptools.setup(
     name='plantuml2cpp',
-    version='0.0.1',
+    version='0.0.2',
     author='Johannes Bergmann',
     author_email='j-bergmann@outlook.com',
     description='C++ code generator for finite state machines from PlantUML state diagrams',
