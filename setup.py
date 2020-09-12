@@ -24,5 +24,10 @@ setuptools.setup(
         'License :: OSI Approved :: GNU Lesser General Public License v2 or later (LGPLv2+)',
         'Operating System :: OS Independent',
     ],
-    python_requires='>=3.7'
+    python_requires='>=3.7',
+    entry_points={
+        'console_scripts': [
+            'plantuml2cpp = plantuml2cpp.__main__:main'
+        ]
+    },
 )
