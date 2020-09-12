@@ -25,4 +25,9 @@ setuptools.setup(
         'Operating System :: OS Independent',
     ],
     python_requires='>=3.7',
+    entry_points={
+        'console_scripts': [
+            'plantuml2cpp = plantuml2cpp.__main__:main'
+        ]
+    },
 )
