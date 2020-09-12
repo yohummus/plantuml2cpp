@@ -1,0 +1,16 @@
+@startuml
+title Internal Transitions FSM
+
+[*] -> Working
+
+state Working {
+    [*] -> Drilling
+
+    Drilling : entry / printf("Entered Drilling\\n")
+    Drilling : exit / printf("Left Drilling\\n")
+    Drilling : HitSomething / printf("Trans HitSomething\\n")
+}
+
+Working : entry / printf("Entered Working\\n")
+Working : exit / printf("Left Working\\n")
+Working : GotHungry / printf("Trans GotHungry\\n")

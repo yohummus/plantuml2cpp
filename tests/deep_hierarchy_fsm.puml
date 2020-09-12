@@ -1,0 +1,65 @@
+@startuml
+title Deep Hierarchy FSM
+
+[*] --> Passive
+state Passive {
+    [*] -> Sleeping
+    state Sleeping {
+        [*] -> DeepSleep
+        state DeepSleep
+        state Napping
+    }
+
+    Off :
+}
+
+state Active {
+    [*] -> Watching
+    state Watching {
+        [*] -> BlackAndWhite
+        state BlackAndWhite
+        state InColor {
+            [*] -> HighDefinition
+            state HighDefinition
+            state FullHd
+        }
+    }
+
+    state Listening
+}
+
+' Entry actions
+Passive : entry / printf("Entered Passive\\n")
+Sleeping : entry / printf("Entered Sleeping\\n")
+Napping : entry / printf("Entered Napping\\n")
+DeepSleep : entry / printf("Entered DeepSleep\\n")
+Off : entry / printf("Entered Off\\n")
+Active : entry / printf("Entered Active\\n")
+Watching : entry / printf("Entered Watching\\n")
+BlackAndWhite : entry / printf("Entered BlackAndWhite\\n")
+InColor : entry / printf("Entered InColor\\n")
+HighDefinition : entry / printf("Entered HighDefinition\\n")
+FullHd : entry / printf("Entered FullHd\\n")
+Listening : entry / printf("Entered Listening\\n")
+
+' Exit actions
+Passive : exit / printf("Left Passive\\n")
+Sleeping : exit / printf("Left Sleeping\\n")
+Napping : exit / printf("Left Napping\\n")
+DeepSleep : exit / printf("Left DeepSleep\\n")
+Off : exit / printf("Left Off\\n")
+Active : exit / printf("Left Active\\n")
+Watching : exit / printf("Left Watching\\n")
+BlackAndWhite : exit / printf("Left BlackAndWhite\\n")
+InColor : exit / printf("Left InColor\\n")
+HighDefinition : exit / printf("Left HighDefinition\\n")
+FullHd : exit / printf("Left FullHd\\n")
+Listening : exit / printf("Left Listening\\n")
+
+' Transitions
+DeepSleep --> HighDefinition : New4kMonitorArrived \n/ printf("Trans New4kMonitorArrived\\n")
+Active --> Passive : Timeout \n/ printf("Trans Timeout\\n")
+InColor --> Listening : HeardSomeNoise \n/ printf("Trans HeardSomeNoise\\n")
+BlackAndWhite --> Watching : Glitch \n/ printf("Trans Glitch\\n")
+Listening -> BlackAndWhite : SawSomething \n/ printf("Trans SawSomething\\n")
+DeepSleep -> Napping : HeardSomething \n/ printf("Trans HeardSomething\\n")
